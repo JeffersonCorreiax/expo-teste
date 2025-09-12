@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "420188968342",
+    "firebase_url": "https://imobiliaria-ed28f-default-rtdb.firebaseio.com",
+    "project_id": "imobiliaria-ed28f",
+    "storage_bucket": "imobiliaria-ed28f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:420188968342:android:460b2256bdb6fcfea8b9b7",
+        "android_client_info": {
+          "package_name": "com.taibu.testenotifications"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrgitufABFZxm9Lli1vYDKyaQF37iZxEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
