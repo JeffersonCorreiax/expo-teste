@@ -118,7 +118,7 @@ export default function App() {
         <Text style={{ color: 'white' }}>dados: {notification && JSON.stringify(notification.request.content.data)}</Text>
       </View>
       <Button
-        title="Press to Send Notification"
+        title="enviar notificacao"
         onPress={async () => {
           await sendPushNotification(expoPushToken);
         }}
