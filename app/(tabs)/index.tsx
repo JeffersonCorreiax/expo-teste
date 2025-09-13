@@ -1,91 +1,128 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Button, Text, View, StyleSheet } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { Text, View, Button, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
   }),
 });
 
-export default function HomeScreen() {
-  const [token, setToken] = useState<string | null>(null);
-  const responseListener = useRef<Notifications.Subscription | null>(null);
-  useEffect(() => {
-    registerForPushNotificationsAsync().then(tok => setToken(tok));
 
-    // listener quando o usuário clica/abre uma notificação
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response:', response);
+
+async function sendPushNotification(expoPushToken: string) {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    title: 'Original Title',
+    body: 'And here is the body!',
+    data: { someData: 'goes here' },
+  };
+
+  await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Accept-encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(message),
+  });
+}
+
+
+function handleRegistrationError(errorMessage: string) {
+  alert(errorMessage);
+  throw new Error(errorMessage);
+}
+
+async function registerForPushNotificationsAsync() {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      handleRegistrationError('Permission not granted to get push token for push notification!');
+      return;
+    }
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    if (!projectId) {
+      handleRegistrationError('Project ID not found');
+    }
+    try {
+      const pushTokenString = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId,
+        })
+      ).data;
+      console.log(pushTokenString);
+      return pushTokenString;
+    } catch (e: unknown) {
+      handleRegistrationError(`${e}`);
+    }
+  } else {
+    handleRegistrationError('Must use physical device for push notifications');
+  }
+}
+
+export default function App() {
+  const [expoPushToken, setExpoPushToken] = useState('');
+  const [notification, setNotification] = useState<Notifications.Notification | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    registerForPushNotificationsAsync()
+      .then(token => setExpoPushToken(token ?? ''))
+      .catch((error: any) => setExpoPushToken(`${error}`));
+
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      setNotification(notification);
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log(response);
     });
 
     return () => {
-      responseListener.current?.remove();
+      notificationListener.remove();
+      responseListener.remove();
     };
   }, []);
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <Text>Token (envie pro backend):{token}</Text>
-      <Text selectable style={{ marginVertical: 12 }}>{token ?? 'Obtendo token...'}</Text>
 
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'space-around' }}>
+      <Text>push token: {expoPushToken}</Text>
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: 'white' }}>titulo: {notification && notification.request.content.title} </Text>
+        <Text style={{ color: 'white' }}>body: {notification && notification.request.content.body}</Text>
+        <Text style={{ color: 'white' }}>dados: {notification && JSON.stringify(notification.request.content.data)}</Text>
+      </View>
       <Button
-        title="Enviar notificação local de teste"
+        title="Press to Send Notification"
         onPress={async () => {
-          await Notifications.scheduleNotificationAsync({
-            content: { title: 'Teste', body: 'Notificação local funcionando' },
-            trigger: null,
-          });
+          await sendPushNotification(expoPushToken);
         }}
       />
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
-
-async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) {
-    alert('Precisa rodar em dispositivo físico para testar push nativo');
-    return null;
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    alert('Permissão para notificações negada!');
-    return null;
-  }
-
-  // Retorna token nativo (FCM no Android, APNs no iOS)
-  const tokenData = await Notifications.getDevicePushTokenAsync();
-  console.log('device push token', tokenData);
-  return tokenData?.data ?? null;
 }
