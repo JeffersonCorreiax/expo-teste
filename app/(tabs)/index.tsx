@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Text, View, Button, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -111,7 +111,7 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'space-around' }}>
-      <Text>push token: {expoPushToken}</Text>
+      <Text style={{ color: 'white' }}>push token: {expoPushToken}</Text>
       <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: 'white' }}>titulo: {notification && notification.request.content.title} </Text>
         <Text style={{ color: 'white' }}>body: {notification && notification.request.content.body}</Text>
